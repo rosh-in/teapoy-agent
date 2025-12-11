@@ -1,0 +1,48 @@
+# Environment variables and secrets
+.env
+credentials.json
+credentials.json:Zone.Identifier
+token.json
+
+# Documentation and plans
+IMPLEMENTATION_PLAN.txt
+
+# Test files and temporary outputs
+gemini_test.py
+hello.txt
+formatted_briefing.txt
+.gitignore
+
+# Runtime data and logs
+last_analysis.json
+printed_missions.txt
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Additional potential sensitive files
+*.key
+*.pem
+*.p12
+*.pfx
+config.yaml
+config.yml
+secrets.json
+.secrets/
+
+# Logs that might contain sensitive data
+*.log
+logs/
+
+# Backup files
+*.bak
+*.backup
+*~
