@@ -51,7 +51,6 @@ A Raspberry Pi–powered desktop device that prints daily tasks as Mission-Impos
 - LinkedIn (messages, job posts)
 - Notion
 - WhatsApp
-- Call logs (via Home Assistant integration)
 - Personal todo apps
 
 **Monitoring Behavior:**
@@ -201,7 +200,6 @@ MISSION ID: [Unique identifier]
 - Slack API (team messaging)
 - Google Calendar API (meeting/event tasks)
 - WhatsApp Business API (customer communications)
-- Home Assistant API (call log monitoring and IoT device integration)
 
 ### 4.3 Non-Functional Requirements
 - **Reliability:** 99.5%+ uptime
@@ -239,27 +237,6 @@ MISSION ID: [Unique identifier]
 - Better to print and cancel than to miss something important
 - Urgency classification is subjective and user-specific
 
-### 5.5 Home Assistant Integration for Call Monitoring
-**Decision:** Use Home Assistant to monitor call logs and trigger tasks based on call patterns.
-
-**Rationale:**
-- Home Assistant provides unified IoT platform for call log monitoring
-- Can integrate with various phone systems (Android, VoIP, landline)
-- Enables automation based on call patterns (missed calls, frequent callers)
-- Provides webhook/API endpoints for real-time call notifications
-- Allows future expansion to other IoT devices (door sensors, motion detectors)
-
-**Implementation Approach:**
-- Install Home Assistant on same Raspberry Pi or dedicated device
-- Configure phone integration (Android companion app or VoIP integration)
-- Set up automation rules to POST call events to pi2printer API
-- Use AI to analyze call patterns and generate follow-up tasks
-- Examples: "Call back John - missed call 3x today (HIGH priority)"
-
-**Installation Notes:**
-- For Pi Zero 2W: Consider Python venv over Docker for better performance
-- Docker adds ~50-100MB overhead on 512MB device
-- Python venv provides better resource utilization for constrained hardware
 
 ---
 
@@ -315,7 +292,6 @@ These are intentionally left open for implementer creativity:
 8. **Configuration UI:** Web dashboard vs. config files vs. chat commands?
 9. **Analytics:** What metrics to track and how to present them?
 10. **Multi-device:** Could there be multiple printers in different rooms?
-11. **Home Assistant Integration:** How to monitor call logs and trigger tasks based on call patterns/missed calls?
 
 ---
 
