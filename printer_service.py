@@ -389,13 +389,13 @@ class PrinterService:
         
         try:
             print(f"🖨️ Printing mission via {self.get_printer_info()}...")
-            # Fire webhook BEFORE printing (non-blocking)
+            # Fire webhook BEFORE printing (immediately)
             try:
                 if AUDIO_TRIGGER.get('enabled') and AUDIO_TRIGGER.get('webhook_url'):
                     _fire_webhook_async(
                         AUDIO_TRIGGER.get('webhook_url'),
                         {'event':'mission_print','source':'pi2printer'},
-                        float(AUDIO_TRIGGER.get('lead_seconds', 0.0))
+                        0.0  # Fire immediately, no delay
                     )
             except Exception:
                 pass
@@ -405,7 +405,7 @@ class PrinterService:
                     _fire_webhook_async(
                         AUDIO_TRIGGER.get('stop_webhook_url'),
                         {'event':'mission_stop','source':'pi2printer'},
-                        float(AUDIO_TRIGGER.get('lead_seconds', 0.0)) + float(AUDIO_TRIGGER.get('play_duration_seconds', 25.0))
+                        float(AUDIO_TRIGGER.get('lead_seconds', 5.0)) + float(AUDIO_TRIGGER.get('play_duration_seconds', 25.0))
                     )
             except Exception:
                 pass
@@ -413,10 +413,16 @@ class PrinterService:
             try:
                 audio_mgr = MissionAudioManager(AUDIO_CONFIG)
                 audio_mgr.play_mission_theme_async(
-                    lead_seconds=float(AUDIO_CONFIG.get('pre_print_lead_seconds', 0.0))
+                    lead_seconds=0.0
                 )
             except Exception as _e:
                 pass
+            
+            # Wait for music to start playing before printing
+            lead_wait = float(AUDIO_TRIGGER.get('lead_seconds', 5.0))
+            if AUDIO_TRIGGER.get('enabled') and lead_wait > 0:
+                print(f"⏳ Waiting {lead_wait}s for music to start...")
+                time.sleep(lead_wait)
             
             # For Bluetooth direct printer, ensure connection
             if isinstance(self.printer, BluetoothDirectPrinter):

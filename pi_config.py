@@ -122,7 +122,7 @@ AUDIO_TRIGGER = {
     'enabled': True,
     'webhook_url': os.getenv('ZAPIER_WEBHOOK_URL', ''),
     'stop_webhook_url': os.getenv('ZAPIER_STOP_WEBHOOK_URL', ''),
-    'lead_seconds': 3.0,
+    'lead_seconds': 5.0,
     'play_duration_seconds': 28.0,
 }
 
