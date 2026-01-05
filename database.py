@@ -85,8 +85,6 @@ class Database:
             """)
             
             conn.commit()
-        
-        print("✅ Database initialized successfully")
     
     def create_mission(self, analysis: Dict[str, Any], email_data: Dict[str, str]) -> str:
         """Create a new mission from analysis data"""
