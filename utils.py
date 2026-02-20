@@ -18,6 +18,12 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
+# Gemini API
+import warnings
+with warnings.catch_warnings():
+    warnings.simplefilter('ignore', FutureWarning)
+    import google.generativeai as genai
+
 # Load environment variables
 load_dotenv()
 
@@ -30,6 +36,10 @@ logger = logging.getLogger(__name__)
 OLLAMA_HOST = os.getenv('OLLAMA_HOST', 'http://192.168.1.43:11434')
 OLLAMA_MODEL = os.getenv('OLLAMA_MODEL', 'gemma2:2b')
 USE_OLLAMA = os.getenv('USE_OLLAMA', 'true').lower() == 'true'
+
+# Gemini configuration
+GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash-lite')
 
 
 def setup_gmail_service():
@@ -143,8 +153,31 @@ class OllamaModel:
         return Response(text)
 
 
-# Legacy alias for backwards compatibility
-UnifiedLLMModel = OllamaModel
+
+
+class GeminiModel:
+    """Gemini API model interface"""
+
+    def __init__(self):
+        if not GEMINI_API_KEY:
+            raise ValueError("GEMINI_API_KEY not set in environment")
+        genai.configure(api_key=GEMINI_API_KEY)
+        self.model = genai.GenerativeModel(GEMINI_MODEL)
+        logger.info(f"✅ Gemini model initialized: {GEMINI_MODEL}")
+
+    def generate_content(self, prompt: str):
+        """Generate content - returns response with .text attribute"""
+        try:
+            response = self.model.generate_content(prompt)
+            return response
+        except Exception as e:
+            logger.error(f"Gemini generation failed: {e}")
+            raise
+
+
+# Use Gemini as the primary LLM
+UnifiedLLMModel = GeminiModel
+
 
 
 
@@ -341,7 +374,7 @@ def test_gmail_connection():
 def test_gemini_connection():
     """Test Gemini API connection"""
     try:
-        model = setup_gemini_model()
+        model = GeminiModel()
         
         # Simple test query
         response = model.generate_content("Say 'Hello from Gemini!' in JSON format: {\"message\": \"...\"}}")
