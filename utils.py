@@ -225,46 +225,74 @@ def extract_email_body(payload: Dict) -> str:
 
 def create_task_analysis_prompt(email_data: Dict[str, Any]) -> str:
     """Create standardized prompt for email task analysis"""
-    return f"""
-    Analyze the following email and determine if it is a "Mission" (task/request) or a "Personal Message" (banter, compliment, chat).
+    return f"""You are an email classifier for a personal task management system. \
+Your job is to read an incoming email and classify it into exactly one of three types, \
+then extract structured data based on that type.
 
-    Email Subject: {email_data.get('subject')}
-    From: {email_data.get('from')}
-    Body: {email_data.get('body')}
+EMAIL TO ANALYSE
+----------------
+Subject: {email_data.get('subject')}
+From: {email_data.get('from')}
+Body:
+{email_data.get('body')}
 
-    Return ONLY a JSON object with this structure:
-    {{
-        "type": "MISSION" | "MESSAGE" | "IGNORE",
-        "has_task": boolean, (true if type is MISSION)
-        "confidence": float (0-1),
-        "reasoning": "explanation",
-        
-        // If type is MISSION:
-        "mission_briefing": {{
-            "title": "Short title",
-            "urgency": "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO",
-            "deadline": "YYYY-MM-DD" or null,
-            "action_required": "What needs to be done",
-            "context": "Why it matters",
-            "people_involved": ["List of names"],
-            "mission_id": "MI-{email_data['id'][:8]}"
-        }},
+CLASSIFICATION RULES
+--------------------
+- MISSION: The email requires the recipient to take action or do work (reply, complete a task, make a decision, attend something, pay something, fix something, etc.)
+- MESSAGE: The email is personal/conversational with no required action (banter, compliments, casual chat, well wishes).
+- IGNORE: The email is automated, promotional, a newsletter, a notification requiring no action, or spam.
 
-        // If type is MESSAGE (Personal/Banter):
-        "receipt_data": {{
-            "customer_name": "Sender name (extract from From field, just name)",
-            "items": [
-                {{ "name": "The full message text" }}
-            ]
-        }}
+URGENCY CRITERIA (for MISSION only)
+------------------------------------
+- CRITICAL: Deadline within 24 hours, or severe consequences if ignored (legal, financial, security).
+- HIGH: Deadline within 3 days, or important person/relationship at stake.
+- MEDIUM: Deadline within a week, or moderate consequence if delayed.
+- LOW: No hard deadline, minor consequence if delayed.
+- INFO: Action needed but purely informational with no real urgency.
+
+OUTPUT FORMAT
+-------------
+Return raw JSON only. Do not wrap in markdown code blocks. Do not include comments. No extra text before or after the JSON.
+
+For type MISSION, return:
+{{
+    "type": "MISSION",
+    "has_task": true,
+    "confidence": <float 0-1>,
+    "reasoning": "<one sentence explanation>",
+    "mission_briefing": {{
+        "mission_id": "MI-{email_data['id'][:8]}",
+        "title": "<short action-oriented title>",
+        "urgency": "<CRITICAL|HIGH|MEDIUM|LOW|INFO>",
+        "deadline": "<YYYY-MM-DD or null>",
+        "action_required": "<specific action the recipient must take>",
+        "context": "<why this matters or what happens if ignored>",
+        "people_involved": ["<name1>", "<name2>"]
     }}
-    
-    Rules:
-    1. If it requires action/work -> MISSION
-    2. If it's just chatting/compliments/fun -> MESSAGE  
-    3. If it's newsletters/automated spam -> IGNORE
-    4. For MESSAGE: Put entire message in items[0].name. Extract sender name for customer_name.
-    """
+}}
+
+For type MESSAGE, return:
+{{
+    "type": "MESSAGE",
+    "has_task": false,
+    "confidence": <float 0-1>,
+    "reasoning": "<one sentence explanation>",
+    "receipt_data": {{
+        "customer_name": "<sender first name only>",
+        "items": [
+            {{"name": "<full message text>"}}
+        ]
+    }}
+}}
+
+For type IGNORE, return:
+{{
+    "type": "IGNORE",
+    "has_task": false,
+    "confidence": <float 0-1>,
+    "reasoning": "<one sentence explanation>"
+}}
+"""
 
 
 
