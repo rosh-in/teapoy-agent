@@ -59,3 +59,13 @@ Thumbs.db
 # Personal notes and docs
 Steps.md
 pi2printer_PRD.txt
+
+# Git user files
+.git-credentials
+.gitconfig
+
+# Token files
+token_tasks.json
+
+# Timestamped DB backups
+*.db.backup_*
