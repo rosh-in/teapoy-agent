@@ -352,6 +352,8 @@ def setup_gmail_auth():
     # The user must open the URL in a browser (on any machine), authorize,
     # then paste the full redirect URL (http://localhost/?code=...) shown
     # in the browser address bar after being redirected.
+    # oauthlib enforces HTTPS by default; allow HTTP for localhost redirects
+    os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
     flow.redirect_uri = 'http://localhost'
     auth_url, _ = flow.authorization_url(prompt='consent')
 
