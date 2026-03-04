@@ -175,8 +175,8 @@ class GeminiModel:
             raise
 
 
-# Use Gemini as the primary LLM
-UnifiedLLMModel = GeminiModel
+# Switch LLM backend via USE_OLLAMA env var (default: Gemini)
+UnifiedLLMModel = OllamaModel if USE_OLLAMA else GeminiModel
 
 
 
@@ -346,26 +346,30 @@ def setup_gmail_auth():
     
     print("   🔐 Starting login process...")
     flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-    
-    # Use manual flow for WSL/headless environments
-    print("\n📋 Please follow these steps:")
-    print("1. Copy this URL and open it in your browser:")
-    
-    flow.redirect_uri = 'urn:ietf:wg:oauth:2.0:oob'
+
+    # For headless / Pi environments: use localhost redirect URI.
+    # Google removed the deprecated urn:ietf:wg:oauth:2.0:oob flow in 2023.
+    # The user must open the URL in a browser (on any machine), authorize,
+    # then paste the full redirect URL (http://localhost/?code=...) shown
+    # in the browser address bar after being redirected.
+    flow.redirect_uri = 'http://localhost'
     auth_url, _ = flow.authorization_url(prompt='consent')
+
+    print("\n📋 Please follow these steps:")
+    print("1. Open this URL in a browser (any machine on your network):")
     print(f"\n{auth_url}\n")
-    
-    print("2. After authorizing, Google will show you an authorization code")
-    print("3. Copy that authorization code and paste it below:")
-    
-    auth_code = input("\nPaste the authorization code here: ").strip()
-    
-    if not auth_code:
-        print("❌ No authorization code provided")
+    print("2. Authorize access. Your browser will redirect to http://localhost/?code=...")
+    print("   (It will show a connection error - that is expected.)")
+    print("3. Copy the FULL URL from your browser address bar and paste it below.")
+
+    redirect_response = input("\nPaste the full redirect URL here: ").strip()
+
+    if not redirect_response:
+        print("❌ No redirect URL provided")
         return False
-    
-    # Exchange the authorization code for credentials
-    flow.fetch_token(code=auth_code)
+
+    # Exchange the authorization code from the redirect URL for credentials
+    flow.fetch_token(authorization_response=redirect_response)
     creds = flow.credentials
     
     # Save the credentials for future use

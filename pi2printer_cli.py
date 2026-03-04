@@ -12,7 +12,6 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any
 
 from database import Database
-from email_monitor import EmailMonitor
 from printer_service import PrinterService
 
 
@@ -21,36 +20,33 @@ class Pi2PrinterCLI:
         self.db = Database()
     
     def status(self):
-        """Show system status"""
+        """Show system status - reads directly from DB, no API initialization needed."""
         print("🎯 PI2PRINTER SYSTEM STATUS")
         print("=" * 50)
-        
+
         try:
-            monitor = EmailMonitor(check_interval_minutes=5)
-            status_data = monitor.get_status()
-            
-            print(f"📧 Last Email Check: {status_data['last_check']}")
-            print(f"⏱️  Check Interval: {status_data['check_interval_minutes']} minutes")
-            print(f"🖨️  Printer: {status_data['printer_status']}")
+            # Last check time and check interval come from DB config (no Gmail/Gemini needed)
+            last_check = self.db.get_config('last_email_check', 'Never')
+            print(f"📧 Last Email Check: {last_check}")
             print()
-            
-            stats = status_data['database_stats']
+
+            stats = self.db.get_stats()
             print("📊 STATISTICS:")
-            
+
             if stats['missions_by_status']:
                 print("   Missions by Status:")
                 for status, count in stats['missions_by_status'].items():
                     print(f"     {status}: {count}")
-            
+
             if stats['missions_by_urgency']:
                 print("   Missions by Urgency:")
                 for urgency, count in stats['missions_by_urgency'].items():
                     print(f"     {urgency}: {count}")
-            
+
             print(f"   📨 Total emails processed: {stats['total_emails_processed']}")
             print(f"   ✅ Emails with tasks: {stats['emails_with_tasks']}")
             print(f"   🚀 Missions last 24h: {stats['missions_last_24h']}")
-            
+
         except Exception as e:
             print(f"❌ Error getting status: {e}")
     
@@ -100,11 +96,10 @@ class Pi2PrinterCLI:
         """Show detailed mission information"""
         print(f"🎯 MISSION DETAILS: {mission_id}")
         print("=" * 50)
-        
+
         try:
-            missions = self.db.get_missions()
-            mission = next((m for m in missions if m['mission_id'] == mission_id), None)
-            
+            mission = self.db.get_mission_by_id(mission_id)
+
             if not mission:
                 print(f"❌ Mission {mission_id} not found")
                 return
