@@ -1,0 +1,18 @@
+[Unit]
+Description=Pi2Printer Email Monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=onetwopi
+WorkingDirectory=/home/onetwopi
+EnvironmentFile=/home/onetwopi/.env
+ExecStart=/home/onetwopi/agent-teapoy-env/bin/python3 /home/onetwopi/email_monitor.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
