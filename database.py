@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, List, Any
 from pathlib import Path
 
-DATABASE_FILE = "pi2printer.db"
+DATABASE_FILE = "agent_teapoy.db"
 
 class Database:
     def __init__(self, db_file: str = DATABASE_FILE):
@@ -25,7 +25,7 @@ class Database:
         return conn
     
     def init_database(self):
-        """Create database tables if they don't exist"""
+        """Create database tables and indexes if they don't exist"""
         with self.get_connection() as conn:
             # Missions table
             conn.execute("""
@@ -82,6 +82,24 @@ class Database:
                     error_message TEXT,
                     FOREIGN KEY (mission_id) REFERENCES missions (mission_id)
                 )
+            """)
+
+            # Indexes for common query patterns
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_missions_status
+                ON missions (status)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_missions_urgency
+                ON missions (urgency)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_missions_created_at
+                ON missions (created_at DESC)
+            """)
+            conn.execute("""
+                CREATE INDEX IF NOT EXISTS idx_print_queue_status
+                ON print_queue (status)
             """)
             
             conn.commit()
@@ -160,6 +178,16 @@ class Database:
         with self.get_connection() as conn:
             cursor = conn.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
+
+    def get_mission_by_id(self, mission_id: str) -> Optional[Dict]:
+        """Fetch a single mission by its mission_id"""
+        with self.get_connection() as conn:
+            cursor = conn.execute(
+                "SELECT * FROM missions WHERE mission_id = ?",
+                (mission_id,)
+            )
+            row = cursor.fetchone()
+            return dict(row) if row else None
     
     def update_mission_status(self, mission_id: str, status: str, google_task_id: str = None):
         """Update mission status"""
@@ -178,14 +206,15 @@ class Database:
                 """, (status, google_task_id, mission_id))
             conn.commit()
     
-    def add_to_print_queue(self, mission_id: str, content: str):
-        """Add mission to print queue"""
+    def add_to_print_queue(self, mission_id: str, content: str) -> int:
+        """Add mission to print queue, return the new queue row id"""
         with self.get_connection() as conn:
-            conn.execute("""
+            cursor = conn.execute("""
                 INSERT INTO print_queue (mission_id, content)
                 VALUES (?, ?)
             """, (mission_id, content))
             conn.commit()
+            return cursor.lastrowid
     
     def get_pending_prints(self) -> List[Dict]:
         """Get pending print jobs"""
@@ -308,9 +337,16 @@ def test_database():
     
     mission_id = db.create_mission(test_analysis, test_email)
     
-    # Test mission retrieval
-    missions = db.get_missions(limit=5)
-    print(f"   Created mission: {missions[0]['title']}")
+    # Test get_mission_by_id
+    mission = db.get_mission_by_id(mission_id)
+    print(f"   Created mission: {mission['title']}")
+    assert mission['mission_id'] == 'MI-TEST001', "get_mission_by_id failed"
+
+    # Test print queue
+    queue_id = db.add_to_print_queue(mission_id, "test content")
+    pending = db.get_pending_prints()
+    assert len(pending) == 1, "Print queue add failed"
+    db.update_print_status(queue_id, 'COMPLETED')
     
     # Test stats
     stats = db.get_stats()
