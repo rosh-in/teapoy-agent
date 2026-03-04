@@ -128,6 +128,19 @@ AUDIO_TRIGGER = {
 
 AUDIO_TRIGGER['cooldown_seconds'] = 5
 
+
+# ------------------------------------------------------------
+# Identity
+# ------------------------------------------------------------
+AGENT_NAME = os.getenv('AGENT_NAME', 'Agent Roshin')
+
+# ------------------------------------------------------------
+# Quiet Hours (24-hour local time)
+# Printing is deferred during this window; missions still created in DB.
+# ------------------------------------------------------------
+QUIET_START = int(os.getenv('QUIET_START', '22'))  # 10 PM default
+QUIET_END   = int(os.getenv('QUIET_END',   '6'))   #  6 AM default
+
 if __name__ == '__main__':
     print(f"Running on Raspberry Pi: {IS_PI}")
     if IS_PI:

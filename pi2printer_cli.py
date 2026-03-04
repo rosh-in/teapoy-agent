@@ -12,6 +12,7 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any
 
 from database import Database
+from pi_config import AGENT_NAME
 from printer_service import PrinterService
 
 
@@ -184,7 +185,7 @@ class Pi2PrinterCLI:
             analysis = json.loads(mission['raw_analysis'])
             
             printer = PrinterService(fallback_to_file=True)
-            success = printer.print_mission(analysis, "Agent Roshin")
+            success = printer.print_mission(analysis, AGENT_NAME)
             
             if success:
                 print(f"Mission {mission_id} printed")

@@ -41,7 +41,10 @@ class EmailMonitor:
         self.db = Database()
 
         # Use Pi-specific printer configuration
-        from pi_config import get_printer_config
+        from pi_config import get_printer_config, AGENT_NAME, QUIET_START, QUIET_END
+        self.agent_name   = AGENT_NAME
+        self.quiet_start  = QUIET_START
+        self.quiet_end    = QUIET_END
         printer_config = get_printer_config()
 
         self.printer = PrinterService(
@@ -78,6 +81,45 @@ class EmailMonitor:
         except Exception as e:
             logger.error(f"Failed to setup APIs: {e}")
             raise
+
+
+    def _is_quiet_hours(self) -> bool:
+        """Return True if current local time falls within the quiet window."""
+        hour = datetime.now().hour  # local time
+        if self.quiet_start > self.quiet_end:
+            # Window spans midnight  e.g. 22 → 6
+            return hour >= self.quiet_start or hour < self.quiet_end
+        else:
+            # Window within same day e.g. 2 → 5
+            return self.quiet_start <= hour < self.quiet_end
+
+    def _flush_pending_print_queue(self):
+        """Print any missions that were deferred during quiet hours."""
+        pending = self.db.get_pending_prints()
+        if not pending:
+            return
+        logger.info(f"🌅 Flushing {len(pending)} deferred print(s) from quiet hours...")
+        for job in pending:
+            mission = self.db.get_mission_by_id(job['mission_id'])
+            if not mission:
+                self.db.update_print_status(job['id'], 'FAILED', error_message='Mission not found')
+                continue
+            # Reconstruct analysis dict from stored raw_analysis
+            import json as _j
+            try:
+                analysis = _j.loads(mission['raw_analysis'])
+            except Exception:
+                self.db.update_print_status(job['id'], 'FAILED', error_message='Could not parse raw_analysis')
+                continue
+
+            self.db.update_print_status(job['id'], 'PRINTING')
+            success = self._print_mission_with_retry(analysis, job['mission_id'])
+            if success:
+                self.db.update_print_status(job['id'], 'COMPLETED')
+                logger.info(f"✅ Deferred mission printed: {job['mission_id']}")
+            else:
+                self.db.update_print_status(job['id'], 'FAILED', error_message='Print failed after retries')
+                logger.warning(f"⚠️ Deferred print still failed: {job['mission_id']}")
 
     def fetch_new_emails(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Fetch new emails since last check, with exponential backoff on transient errors."""
@@ -195,7 +237,7 @@ class EmailMonitor:
         """
         for attempt in range(max_retries):
             try:
-                success = self.printer.print_mission(analysis, "Agent Roshin")
+                success = self.printer.print_mission(analysis, self.agent_name)
                 if success:
                     return True
                 # print_mission returned False (non-exception failure) - don't retry
@@ -241,20 +283,24 @@ class EmailMonitor:
 
                 if mission_id:
                     # Format briefing content and enqueue it for tracking
-                    briefing_text = self.printer.format_mission_briefing(analysis, "Agent Roshin")
+                    briefing_text = self.printer.format_mission_briefing(analysis, self.agent_name)
                     queue_id = self.db.add_to_print_queue(mission_id, briefing_text or "")
 
-                    # Attempt to print with retry
-                    self.db.update_print_status(queue_id, 'PRINTING')
-                    success = self._print_mission_with_retry(analysis, mission_id)
-
-                    if success:
-                        self.db.update_print_status(queue_id, 'COMPLETED')
-                        logger.info(f"✅ Mission printed: {mission_id}")
+                    # Skip printing during quiet hours - queue stays PENDING until morning flush
+                    if self._is_quiet_hours():
+                        logger.info(f"🌙 Quiet hours ({self.quiet_start}:00–{self.quiet_end}:00) — mission {mission_id} deferred until morning")
                     else:
-                        self.db.update_print_status(queue_id, 'FAILED',
-                                                     error_message="All print retries exhausted")
-                        logger.warning(f"⚠️ Print failed after retries: {mission_id}")
+                        # Attempt to print with retry
+                        self.db.update_print_status(queue_id, 'PRINTING')
+                        success = self._print_mission_with_retry(analysis, mission_id)
+
+                        if success:
+                            self.db.update_print_status(queue_id, 'COMPLETED')
+                            logger.info(f"✅ Mission printed: {mission_id}")
+                        else:
+                            self.db.update_print_status(queue_id, 'FAILED',
+                                                         error_message="All print retries exhausted")
+                            logger.warning(f"⚠️ Print failed after retries: {mission_id}")
 
                     self.db.mark_email_processed(email_data, has_task=True, mission_id=mission_id)
                     return True
@@ -300,6 +346,10 @@ class EmailMonitor:
         logger.info("Starting email check cycle...")
 
         try:
+            # Flush any missions deferred during quiet hours
+            if not self._is_quiet_hours():
+                self._flush_pending_print_queue()
+
             new_emails = self.fetch_new_emails(limit=20)
 
             if not new_emails:
