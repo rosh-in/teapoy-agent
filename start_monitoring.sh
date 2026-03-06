@@ -7,10 +7,10 @@ echo "======================================"
 cd "$(cd -- "$(dirname "$0")" >/dev/null 2>&1 && pwd)"
 
 # Activate virtual environment
-if [ -d "pi2printer-env" ]; then
-    source pi2printer-env/bin/activate
+if [ -d "agent-teapoy-env" ]; then
+    source agent-teapoy-env/bin/activate
     echo "✅ Virtual environment activated"
-elif [ -d "printer-env" ]; then
+elif [ -d "pi2printer-env" ] || [ -d "printer-env" ]; then
     source printer-env/bin/activate
     echo "✅ Virtual environment activated"
 else

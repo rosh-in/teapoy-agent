@@ -105,7 +105,7 @@ class Pi2PrinterCLI:
                 print(f"❌ Mission {mission_id} not found")
                 return
             
-            print(f"Title: {mission['title']}")
+            print(f"Codename: {mission['title']}")
             print(f"Urgency: {mission['urgency']}")
             print(f"Status: {mission['status']}")
             print(f"Created: {mission['created_at']}")
