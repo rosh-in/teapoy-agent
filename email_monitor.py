@@ -309,22 +309,25 @@ class EmailMonitor:
 
             # --- MESSAGE: personal/conversational ---
             elif email_type == 'MESSAGE':
-                logger.info("Found personal message, printing receipt...")
-                receipt_data = analysis.get('receipt_data', {})
-                if not receipt_data:
-                    receipt_data = {
-                        'customer_name': email_data.get('from', 'FRIEND')[:20],
-                        'items': [{'name': 'Message content'}],
+                logger.info("Found personal message, printing note...")
+                message_note = analysis.get('message_note', {})
+                if not message_note:
+                    # Fallback if Gemini didn't return message_note
+                    sender = email_data.get('from', 'Unknown')
+                    from_name = sender.split('<')[0].strip().split()[0] if sender else 'Unknown'
+                    message_note = {
+                        'from_name': from_name,
+                        'summary': f"Message from {from_name}: {email_data.get('subject', 'No subject')}",
                     }
 
                 try:
-                    success = self.printer.print_receipt(receipt_data)
+                    success = self.printer.print_personal_note(message_note)
                     if success:
-                        logger.info(f"✅ Receipt printed for: {email_data['subject']}")
+                        logger.info(f"✅ Personal note printed for: {email_data['subject']}")
                     else:
-                        logger.warning("⚠️ Receipt print failed")
+                        logger.warning("⚠️ Personal note print failed")
                 except Exception as e:
-                    logger.error(f"Error printing receipt: {e}")
+                    logger.error(f"Error printing personal note: {e}")
 
                 self.db.mark_email_processed(email_data, has_task=False)
                 return True
