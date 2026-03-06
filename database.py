@@ -121,11 +121,11 @@ class Database:
             """, (
                 mission_id,
                 email_data['id'],
-                mission['title'],
+                email_data.get('subject', 'No Subject'),
                 mission['urgency'],
                 mission.get('deadline'),
                 mission['action_required'],
-                mission['context'],
+                mission.get('context', ''),
                 json.dumps(mission.get('people_involved', [])),
                 json.dumps(analysis)
             ))
