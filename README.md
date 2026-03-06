@@ -132,7 +132,7 @@ The system uses:
 - **Gmail API** with readonly permissions (`token.json`)
 - **Gemini API** for AI analysis (`.env` file)
 - **SQLite database** (`pi2printer.db`)
-- **Thermal printer** (USB, fallback to `printed_missions.txt`)
+- **Thermal printer** (USB, fallback to `webhook_log.txt`)
 
 ## Urgency Levels 🚨
 
@@ -151,7 +151,7 @@ The system uses:
 4. **Customize filters**: Adjust AI prompts for your specific needs
 
 ### For Testing:
-- Missions print to `printed_missions.txt`
+- Missions print to `webhook_log.txt`
 - Monitor with `python3 pi2printer_cli.py monitor`
 - Check status with `python3 pi2printer_cli.py status`
 
@@ -170,7 +170,7 @@ pi2printer/
 ├── .env                  # API keys (GEMINI_API_KEY)
 ├── token.json           # Gmail credentials
 ├── pi2printer.db        # Mission database
-├── printed_missions.txt # Printer output (testing)
+├── webhook_log.txt # Printer output (testing)
 └── email_monitor.log    # System logs
 ```
 
