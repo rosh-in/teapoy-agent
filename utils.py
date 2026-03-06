@@ -225,12 +225,13 @@ def extract_email_body(payload: Dict) -> str:
 
 def create_task_analysis_prompt(email_data: Dict[str, Any]) -> str:
     """Create standardized prompt for email task analysis"""
-    return f"""You are an email classifier for a personal task management system. \
-Your job is to read an incoming email and classify it into exactly one of three types, \
-then extract structured data based on that type.
+    return f"""You are a covert intelligence analyst converting incoming field communications \
+into mission briefings. Classify each email into exactly one of three types and extract \
+structured intelligence data with precision.
 
 EMAIL TO ANALYSE
 ----------------
+Today's date: {__import__('datetime').datetime.now().strftime('%Y-%m-%d (%A)')}
 Subject: {email_data.get('subject')}
 From: {email_data.get('from')}
 Body:
@@ -238,9 +239,11 @@ Body:
 
 CLASSIFICATION RULES
 --------------------
-- MISSION: The email requires the recipient to take action or do work (reply, complete a task, make a decision, attend something, pay something, fix something, etc.)
-- MESSAGE: The email is personal/conversational with no required action (banter, compliments, casual chat, well wishes).
-- IGNORE: The email is automated, promotional, a newsletter, a notification requiring no action, or spam.
+- MISSION: The email requires the recipient to take action or do work (reply, complete a
+  task, make a decision, attend something, pay something, fix something, etc.)
+- MESSAGE: The email is personal or conversational with no required action (banter,
+  compliments, casual chat, well wishes, personal updates).
+- IGNORE: Automated, promotional, a newsletter, a notification requiring no action, spam.
 
 URGENCY CRITERIA (for MISSION only)
 ------------------------------------
@@ -248,11 +251,19 @@ URGENCY CRITERIA (for MISSION only)
 - HIGH: Deadline within 3 days, or important person/relationship at stake.
 - MEDIUM: Deadline within a week, or moderate consequence if delayed.
 - LOW: No hard deadline, minor consequence if delayed.
-- INFO: Action needed but purely informational with no real urgency.
+- INFO: Action needed but purely informational, no real urgency.
+
+WRITING RULES (strictly enforced)
+----------------------------------
+- title: 2-4 words, ALL CAPS, codename style. e.g. "OPERATION SILENT FOX", "BROKEN SIGNAL", "DARK INVOICE".
+- action_required: terse, imperative, spy-thriller tone. Must still accurately describe the
+  actual task. One sentence, max 12 words. e.g. "Secure the payment before the deadline expires."
+- context: plain English, 1 sentence. State the consequence of not acting, or null.
+- people_involved: real names only, exactly as they appear in the email.
 
 OUTPUT FORMAT
 -------------
-Return raw JSON only. Do not wrap in markdown code blocks. Do not include comments. No extra text before or after the JSON.
+Return raw JSON only. No markdown code blocks. No comments. No extra text.
 
 For type MISSION, return:
 {{
@@ -262,11 +273,11 @@ For type MISSION, return:
     "reasoning": "<one sentence explanation>",
     "mission_briefing": {{
         "mission_id": "MI-{email_data['id'][:8]}",
-        "title": "<short action-oriented title>",
+        "title": "<codename, 2-4 words, ALL CAPS>",
         "urgency": "<CRITICAL|HIGH|MEDIUM|LOW|INFO>",
         "deadline": "<YYYY-MM-DD or null>",
-        "action_required": "<specific action the recipient must take>",
-        "context": "<why this matters or what happens if ignored>",
+        "action_required": "<terse imperative, spy tone, max 12 words>",
+        "context": "<consequence if ignored, 1 sentence, or null>",
         "people_involved": ["<name1>", "<name2>"]
     }}
 }}
@@ -277,11 +288,9 @@ For type MESSAGE, return:
     "has_task": false,
     "confidence": <float 0-1>,
     "reasoning": "<one sentence explanation>",
-    "receipt_data": {{
-        "customer_name": "<sender first name only>",
-        "items": [
-            {{"name": "<full message text>"}}
-        ]
+    "message_note": {{
+        "from_name": "<sender first name only>",
+        "summary": "<one sentence describing what the message says>"
     }}
 }}
 
@@ -292,6 +301,49 @@ For type IGNORE, return:
     "confidence": <float 0-1>,
     "reasoning": "<one sentence explanation>"
 }}
+
+EXAMPLES
+--------
+Example 1 — MISSION:
+  Subject: Invoice overdue - action required
+  From: accounts@supplier.com
+  Body: Invoice #1234 for £150 is 14 days overdue. Pay by Friday or your account will be suspended.
+  Output:
+  {{
+      "type": "MISSION", "has_task": true, "confidence": 0.97,
+      "reasoning": "Email demands payment with a hard deadline and a stated consequence.",
+      "mission_briefing": {{
+          "mission_id": "MI-abc12345", "title": "DARK INVOICE",
+          "urgency": "HIGH", "deadline": "2026-03-06",
+          "action_required": "Secure payment of invoice #1234 before Friday.",
+          "context": "Account will be suspended if not paid by the deadline.",
+          "people_involved": []
+      }}
+  }}
+
+Example 2 — MESSAGE:
+  Subject: Hey!
+  From: John Smith <john@gmail.com>
+  Body: Miss you mate, hope you're doing well. Let's catch up soon!
+  Output:
+  {{
+      "type": "MESSAGE", "has_task": false, "confidence": 0.95,
+      "reasoning": "Casual personal message with no action required.",
+      "message_note": {{
+          "from_name": "John",
+          "summary": "John says he misses you and wants to catch up soon."
+      }}
+  }}
+
+Example 3 — IGNORE:
+  Subject: Your weekly digest
+  From: newsletter@medium.com
+  Body: Here are the top stories this week...
+  Output:
+  {{
+      "type": "IGNORE", "has_task": false, "confidence": 0.99,
+      "reasoning": "Automated newsletter, no action required."
+  }}
 """
 
 
