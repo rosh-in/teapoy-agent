@@ -8,7 +8,6 @@ import os
 import json as _json
 import urllib.request as _ur
 import threading
-import subprocess
 import time
 from datetime import datetime
 from typing import Dict, Any, Optional
@@ -31,16 +30,10 @@ except ImportError:
 from escpos.exceptions import USBNotFoundError
 import textwrap
 
-# Audio / webhook config - imported once at module level
+# Webhook config - imported once at module level
 try:
-    from pi_config import AUDIO_CONFIG, AUDIO_TRIGGER
+    from pi_config import AUDIO_TRIGGER
 except Exception:
-    AUDIO_CONFIG = {
-        'enabled': False,
-        'audio_file': 'audio/mission_impossible.mp3',
-        'pulse_sink': None,
-        'pre_print_lead_seconds': 1.0,
-    }
     AUDIO_TRIGGER = {'enabled': False, 'webhook_url': None, 'lead_seconds': 1.0}
 
 # Ensure AUDIO_TRIGGER is always defined (guard against partial pi_config imports)
@@ -50,43 +43,6 @@ if 'AUDIO_TRIGGER' not in dir():
 # Module-level debounce timestamp for webhook calls
 _last_webhook_ts: float = 0.0
 
-
-class MissionAudioManager:
-    """Lightweight audio manager that plays an audio file to PulseAudio (Echo sink).
-    Uses paplay/aplay via subprocess to avoid heavy dependencies. Plays async.
-    """
-    def __init__(self, cfg: dict):
-        self.cfg = cfg or {}
-
-    def _play(self):
-        audio = self.cfg.get('audio_file')
-        if not audio:
-            return
-        sink = self.cfg.get('pulse_sink')
-        if sink:
-            cmd = [
-                'bash', '-lc',
-                f"command -v paplay >/dev/null 2>&1 && paplay --device={sink} '{audio}' || aplay -D pulse '{audio}'"
-            ]
-        else:
-            cmd = [
-                'bash', '-lc',
-                "command -v paplay >/dev/null 2>&1 && paplay '" + audio + "' || aplay -D pulse '" + audio + "'"
-            ]
-        try:
-            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception:
-            pass
-
-    def play_mission_theme_async(self, lead_seconds: float = 0.0):
-        if not self.cfg.get('enabled', False):
-            return
-        def runner():
-            if lead_seconds > 0:
-                time.sleep(lead_seconds)
-            self._play()
-        t = threading.Thread(target=runner, daemon=True)
-        t.start()
 
 
 class BluetoothDirectPrinter:
@@ -222,7 +178,7 @@ class PrinterService:
 
         # 7. Fallback to file output
         if self.fallback_to_file:
-            self.printer = File("printed_missions.txt")
+            self.printer = File("webhook_log.txt")
         else:
             self.printer = Dummy()
 
@@ -242,103 +198,114 @@ class PrinterService:
                     lines.append('')
             return '\n'.join(lines)
 
-        deadline_str = mission.get('deadline', 'ASAP')
-        if deadline_str and deadline_str != 'ASAP':
-            deadline_str = f"DEADLINE: {deadline_str}"
-        else:
-            deadline_str = "DEADLINE: ASAP"
+        deadline_str = mission.get('deadline') or ''
+        deadline_label = "IMMEDIATE"
+        if deadline_str and deadline_str.lower() not in ('null', 'none', 'asap', 'immediate', ''):
+            try:
+                from datetime import date as _date
+                deadline_date = _date.fromisoformat(str(deadline_str)[:10])
+                today = datetime.now().date()
+                delta = (deadline_date - today).days
+                if delta < 0:
+                    deadline_label = f"{deadline_date.strftime('%a %d %b').upper()} — OVERDUE"
+                elif delta == 0:
+                    deadline_label = "EOD TODAY"
+                elif delta == 1:
+                    deadline_label = "EOD TOMORROW"
+                elif delta <= 6:
+                    deadline_label = f"IN {delta} DAYS — {deadline_date.strftime('%a %d %b').upper()}"
+                else:
+                    deadline_label = deadline_date.strftime('%a %d %b %Y').upper()
+            except (ValueError, TypeError):
+                deadline_label = str(deadline_str)
+
+        codename = mission.get('title', 'MISSION BRIEFING')
+        # Truncate and center the codename within print width
+        codename_line = codename[:self.print_width].center(self.print_width)
 
         lines = []
         lines.append("=" * self.print_width)
-        lines.append("    MISSION BRIEFING")
+        lines.append(codename_line)
         lines.append("=" * self.print_width)
+        lines.append(mission['mission_id'].rjust(self.print_width))
         lines.append("")
-        lines.append(f"AGENT: {agent_name}")
-        lines.append(f"URGENCY: {mission['urgency']}")
-        lines.append(f"TIME: {datetime.now().strftime('%H:%M %d/%m/%Y')}")
-        lines.append("")
-        lines.append("MISSION:")
-        lines.append(wrap_text(mission['title']))
+        agent_label = f"AGENT: Agent {agent_name}"
+        lines.append(agent_label + mission['urgency'].rjust(self.print_width - len(agent_label)))
+        now = datetime.now()
+        time_str = now.strftime('%H:%M ') + now.strftime('%a %d %b').upper()
+        lines.append(time_str.rjust(self.print_width))
         lines.append("")
 
         people = mission.get('people_involved', [])
         if people and isinstance(people, list) and len(people) > 0:
-            lines.append("PEOPLE INVOLVED:")
-            lines.append(wrap_text(", ".join(people)))
+            lines.append("PERSONS OF INTEREST:")
+            for person in people:
+                lines.append(f"- {person}"[:self.print_width])
             lines.append("")
 
         lines.append("YOUR MISSION, SHOULD YOU")
         lines.append("CHOOSE TO ACCEPT IT:")
-        lines.append(wrap_text(mission['action_required']))
+        for _al in textwrap.fill(mission['action_required'], width=self.print_width - 2).split('\n'):
+            lines.append(f"  {_al}")
         lines.append("")
-        lines.append("*** THIS MESSAGE WILL")
-        lines.append("    SELF-DESTRUCT ***")
-        lines.append("")
-        lines.append(deadline_str)
-        lines.append("")
+
+        context = mission.get('context') or ''
+        if context and context.lower() not in ('null', 'none', ''):
+            lines.append("INTEL:")
+            lines.append(wrap_text(context))
+
+        lines.append(deadline_label.rjust(self.print_width))
         lines.append("=" * self.print_width)
-        lines.append(f"MISSION ID: {mission['mission_id']}")
+        sd_pad = " " * ((self.print_width - len("*** THIS MESSAGE WILL")) // 2)
+        lines.append(sd_pad + "*** THIS MESSAGE WILL")
+        lines.append(sd_pad + "SELF-DESTRUCT ***")
         lines.append("=" * self.print_width)
 
         return '\n'.join(lines)
 
-    def format_receipt(self, receipt_data: Dict[str, Any]) -> str:
-        """Format personal message as a plain-text receipt ticket.
-
-        Uses plain ASCII labels so the output is correct on all printer
-        types including BluetoothDirectPrinter (raw socket, no ESC/POS lib).
-        """
+    def format_personal_note(self, message_note: Dict[str, Any]) -> str:
+        """Format a personal/conversational message as a printed note."""
         width = self.print_width
 
-        def center(text: str, w: int = width) -> str:
-            return text.center(w)
+        def wrap_text(text: str) -> str:
+            return textwrap.fill(text, width=width)
+
+        from_name = message_note.get('from_name', 'UNKNOWN').upper()
+        summary = message_note.get('summary', '')
 
         lines = []
-
-        lines.append(center("================================"))
-        lines.append(center("TICKET"))
-        lines.append(center("================================"))
+        lines.append("=" * width)
+        lines.append("   INCOMING MESSAGE")
+        lines.append("=" * width)
         lines.append("")
-
-        now = datetime.now()
-        lines.append(f"Date: {now.strftime('%Y-%m-%d')}")
-        lines.append(f"Time: {now.strftime('%I:%M %p')}")
-
-        sender_name = receipt_data.get('customer_name', 'UNKNOWN')
-        lines.append(f"From: u/{sender_name}")
-        lines.append("-" * width)
+        lines.append(f"FROM: {from_name}")
+        lines.append(f"TIME: {datetime.now().strftime('%H:%M %d/%m/%Y')}")
         lines.append("")
-
-        for item in receipt_data.get('items', []):
-            message_text = item.get('name', '')
-            lines.append(textwrap.fill(message_text, width=width))
-
+        lines.append(wrap_text(summary))
         lines.append("")
-        lines.append("-" * width)
-        lines.append(center("Thank you!"))
-        lines.append("")
+        lines.append("=" * width)
 
         return '\n'.join(lines)
 
-    def print_receipt(self, receipt_data: Dict[str, Any]) -> bool:
-        """Print personal message receipt"""
+    def print_personal_note(self, message_note: Dict[str, Any]) -> bool:
+        """Print a personal/conversational message note"""
         if not self.printer:
             print("❌ No printer available")
             return False
 
-        receipt_text = self.format_receipt(receipt_data)
+        note_text = self.format_personal_note(message_note)
         try:
-            print(f"🖨️ Printing receipt via {self.get_printer_info()}...")
+            print(f"🖨️ Printing personal note via {self.get_printer_info()}...")
             if isinstance(self.printer, BluetoothDirectPrinter):
                 if not self.printer.connected:
                     self.printer.open()
-            self.printer.text(receipt_text + "\n\n\n")
+            self.printer.text(note_text + "\n\n\n")
             self.printer.cut()
             if isinstance(self.printer, BluetoothDirectPrinter):
                 self.printer.close()
             return True
         except Exception as e:
-            print(f"❌ Print receipt failed: {e}")
+            print(f"❌ Print personal note failed: {e}")
             if isinstance(self.printer, BluetoothDirectPrinter):
                 self.printer.close()
             return False
@@ -378,12 +345,6 @@ class PrinterService:
             except Exception:
                 pass
 
-            # Start theme before printing (non-blocking)
-            try:
-                MissionAudioManager(AUDIO_CONFIG).play_mission_theme_async(lead_seconds=0.0)
-            except Exception:
-                pass
-
             # Wait for music lead before printing
             lead_wait = float(AUDIO_TRIGGER.get('lead_seconds', 5.0))
             if AUDIO_TRIGGER.get('enabled') and lead_wait > 0:
@@ -394,7 +355,7 @@ class PrinterService:
                 if not self.printer.connected:
                     self.printer.open()
 
-            self.printer.text(briefing_text)
+            self.printer.text(briefing_text + "\n\n")
 
             try:
                 self.printer.cut()
@@ -480,7 +441,7 @@ def _fire_webhook_async(url: str, payload: dict, delay: float = 0.0):
 
         try:
             line = f"WEBHOOK {int(time.time())} code={code} payload={payload}\n"
-            with open('printed_missions.txt', 'a') as f:
+            with open('webhook_log.txt', 'a') as f:
                 f.write(line)
         except Exception:
             pass
