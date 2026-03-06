@@ -109,14 +109,6 @@ ENV_VARS = {
     'max_emails': 'PI2PRINTER_MAX_EMAILS'
 }
 
-# Audio Configuration
-AUDIO_CONFIG = {
-    'enabled': True,
-    'audio_file': 'audio/mission_impossible.mp3',
-    'pulse_sink': None,
-    'pre_print_lead_seconds': 1.0
-}
-
 # Load webhooks from environment
 AUDIO_TRIGGER = {
     'enabled': True,
@@ -132,7 +124,7 @@ AUDIO_TRIGGER['cooldown_seconds'] = 5
 # ------------------------------------------------------------
 # Identity
 # ------------------------------------------------------------
-AGENT_NAME = os.getenv('AGENT_NAME', 'Agent Roshin')
+AGENT_NAME = os.getenv('AGENT_NAME', 'Roshin')
 
 # ------------------------------------------------------------
 # Quiet Hours (24-hour local time)
