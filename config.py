@@ -78,10 +78,10 @@ except FileNotFoundError:
 
 # System paths
 SYSTEM_PATHS = {
-    'log_dir': '/var/log/pi2printer' if IS_PI else './logs',
-    'data_dir': '/var/lib/pi2printer' if IS_PI else './data',
-    'config_dir': '/etc/pi2printer' if IS_PI else './config',
-    'systemd_service': '/etc/systemd/system/pi2printer.service'
+    'log_dir': '/var/log/teapoy-agent' if IS_PI else './logs',
+    'data_dir': '/var/lib/teapoy-agent' if IS_PI else './data',
+    'config_dir': '/etc/teapoy-agent' if IS_PI else './config',
+    'systemd_service': '/etc/systemd/system/teapoy-agent.service'
 }
 
 def get_printer_config():

@@ -124,7 +124,7 @@ Edit `pi_config.py` — set your printer's Bluetooth MAC address:
 ## Running as a systemd service
 
 ```bash
-sudo cp pi2printer.service /etc/systemd/system/
+sudo cp teapoy-agent.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable pi2printer
 sudo systemctl start pi2printer
@@ -142,26 +142,26 @@ sudo journalctl -u pi2printer -f
 
 ```bash
 # System status and database stats
-python3 pi2printer_cli.py status
+python3 teapoy_cli.py status
 
 # List recent missions
-python3 pi2printer_cli.py list
-python3 pi2printer_cli.py list --status NEW --limit 20
+python3 teapoy_cli.py list
+python3 teapoy_cli.py list --status NEW --limit 20
 
 # Show full mission details
-python3 pi2printer_cli.py show MI-3f9a1c2b
+python3 teapoy_cli.py show MI-3f9a1c2b
 
 # Update mission status
-python3 pi2printer_cli.py complete MI-3f9a1c2b
-python3 pi2printer_cli.py cancel MI-3f9a1c2b
+python3 teapoy_cli.py complete MI-3f9a1c2b
+python3 teapoy_cli.py cancel MI-3f9a1c2b
 
 # Printer
-python3 pi2printer_cli.py test-printer
-python3 pi2printer_cli.py print MI-3f9a1c2b
+python3 teapoy_cli.py test-printer
+python3 teapoy_cli.py print MI-3f9a1c2b
 
 # Manual monitoring (one cycle or continuous)
-python3 email_monitor.py --check-once
-python3 email_monitor.py --interval 0.5   # 30-second polling
+python3 monitor.py --check-once
+python3 monitor.py --interval 0.5   # 30-second polling
 ```
 
 ---
@@ -190,14 +190,14 @@ Quiet hours: missions are created in the database immediately but printing is he
 
 ```
 teapoy-agent/
-├── email_monitor.py      # Core monitoring loop and check cycle
-├── pi2printer_cli.py     # CLI for mission management
+├── monitor.py      # Core monitoring loop and check cycle
+├── teapoy_cli.py     # CLI for mission management
 ├── database.py           # SQLite schema and queries
 ├── printer_service.py    # Bluetooth printer driver and briefing formatter
 ├── utils.py              # Gmail auth, Gemini wrapper, email parser
 ├── pi_config.py          # Hardware and environment configuration
-├── pi2printer.service    # systemd unit file
-├── start_monitoring.sh   # Interactive startup menu
+├── teapoy-agent.service    # systemd unit file
+├── start.sh   # Interactive startup menu
 ├── requirements.txt
 ├── .env                  # API keys and agent config (not committed)
 ├── token.json            # Gmail OAuth token (not committed)

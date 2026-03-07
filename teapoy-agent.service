@@ -1,5 +1,5 @@
 [Unit]
-Description=Pi2Printer Email Monitor
+Description=Teapoy Agent
 After=network-online.target
 Wants=network-online.target
 
@@ -8,7 +8,7 @@ Type=simple
 User=onetwopi
 WorkingDirectory=/home/onetwopi
 EnvironmentFile=/home/onetwopi/.env
-ExecStart=/home/onetwopi/agent-teapoy-env/bin/python3 /home/onetwopi/email_monitor.py --interval 0.5
+ExecStart=/home/onetwopi/agent-teapoy-env/bin/python3 /home/onetwopi/monitor.py --interval 0.5
 Restart=on-failure
 RestartSec=10
 StandardOutput=journal

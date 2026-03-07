@@ -32,7 +32,7 @@ import textwrap
 
 # Webhook config - imported once at module level
 try:
-    from pi_config import AUDIO_TRIGGER
+    from config import AUDIO_TRIGGER
 except Exception:
     AUDIO_TRIGGER = {'enabled': False, 'webhook_url': None, 'lead_seconds': 1.0}
 
@@ -328,7 +328,7 @@ class PrinterService:
                 if AUDIO_TRIGGER.get('enabled') and AUDIO_TRIGGER.get('webhook_url'):
                     _fire_webhook_async(
                         AUDIO_TRIGGER.get('webhook_url'),
-                        {'event': 'mission_print', 'source': 'pi2printer'},
+                        {'event': 'mission_print', 'source': 'teapoy-agent'},
                         0.0
                     )
             except Exception:
@@ -339,7 +339,7 @@ class PrinterService:
                 if AUDIO_TRIGGER.get('enabled') and AUDIO_TRIGGER.get('stop_webhook_url'):
                     _fire_webhook_async(
                         AUDIO_TRIGGER.get('stop_webhook_url'),
-                        {'event': 'mission_stop', 'source': 'pi2printer'},
+                        {'event': 'mission_stop', 'source': 'teapoy-agent'},
                         float(AUDIO_TRIGGER.get('lead_seconds', 5.0)) + float(AUDIO_TRIGGER.get('play_duration_seconds', 25.0))
                     )
             except Exception:

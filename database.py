@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from typing import Optional, Dict, List, Any
 from pathlib import Path
 
-DATABASE_FILE = "agent_teapoy.db"
+DATABASE_FILE = "teapoy_agent.db"
 
 class Database:
     def __init__(self, db_file: str = DATABASE_FILE):

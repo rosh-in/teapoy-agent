@@ -29,7 +29,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('email_monitor.log'),
+        logging.FileHandler('monitor.log'),
         logging.StreamHandler()
     ]
 )
@@ -43,7 +43,7 @@ class EmailMonitor:
         self.db = Database()
 
         # Use Pi-specific printer configuration
-        from pi_config import get_printer_config, AGENT_NAME, QUIET_START, QUIET_END
+        from config import get_printer_config, AGENT_NAME, QUIET_START, QUIET_END
         self.agent_name   = AGENT_NAME
         self.quiet_start  = QUIET_START
         self.quiet_end    = QUIET_END

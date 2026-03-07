@@ -1,8 +1,8 @@
 #!/bin/bash
-# Pi2Printer Email Monitoring Startup Script
+# Teapoy Agent Startup Script
 
-echo "Starting Pi2Printer Email Monitor..."
-echo "======================================"
+echo "Starting Teapoy Agent..."
+echo "=============================="
 
 cd "$(cd -- "$(dirname "$0")" >/dev/null 2>&1 && pwd)"
 
@@ -11,11 +11,11 @@ if [ -d "agent-teapoy-env" ]; then
     source agent-teapoy-env/bin/activate
     echo "✅ Virtual environment activated"
 elif [ -d "pi2printer-env" ] || [ -d "printer-env" ]; then
-    source printer-env/bin/activate
+    source agent-teapoy-env/bin/activate
     echo "✅ Virtual environment activated"
 else
     echo "❌ Virtual environment not found!"
-    echo "   Please create it: python3 -m venv pi2printer-env"
+    echo "   Please create it: python3 -m venv agent-teapoy-env"
     exit 1
 fi
 
@@ -34,7 +34,7 @@ fi
 
 # Show current status
 echo "📊 Current Status:"
-python3 pi2printer_cli.py status
+python3 teapoy_cli.py status
 echo ""
 
 # Ask for monitoring interval
@@ -72,4 +72,4 @@ echo "🔥 Warming up Ollama model..."
 echo ""
 
 # Start monitoring
-python3 email_monitor.py --interval $interval
+python3 monitor.py --interval $interval

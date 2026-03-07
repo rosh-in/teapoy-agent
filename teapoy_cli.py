@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from typing import List, Dict, Any
 
 from database import Database
-from pi_config import AGENT_NAME
+from config import AGENT_NAME
 from printer_service import PrinterService
 
 
