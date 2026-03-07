@@ -7,6 +7,8 @@ Continuously monitors Gmail for new emails and processes them into actionable ta
 import os
 import json
 import time
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Any, Optional
@@ -53,6 +55,8 @@ class EmailMonitor:
             network_host=printer_config['network_host'],
             fallback_to_file=printer_config['fallback_to_file']
         )
+
+        self._printer_lock = threading.Lock()
 
         # Setup APIs
         self.gmail_service = None
@@ -237,7 +241,8 @@ class EmailMonitor:
         """
         for attempt in range(max_retries):
             try:
-                success = self.printer.print_mission(analysis, self.agent_name)
+                with self._printer_lock:
+                    success = self.printer.print_mission(analysis, self.agent_name)
                 if success:
                     return True
                 # print_mission returned False (non-exception failure) - don't retry
@@ -348,6 +353,9 @@ class EmailMonitor:
         """Run a single check cycle"""
         logger.info("Starting email check cycle...")
 
+        # Gmail category labels that are never actionable — skip without LLM call
+        SKIP_LABELS = {'CATEGORY_PROMOTIONS', 'CATEGORY_SOCIAL', 'CATEGORY_UPDATES', 'CATEGORY_FORUMS'}
+
         try:
             # Flush any missions deferred during quiet hours
             if not self._is_quiet_hours():
@@ -359,36 +367,65 @@ class EmailMonitor:
                 logger.info("No new emails to process")
                 return
 
+            # ── Label pre-filter ──────────────────────────────────────────────
+            # Mark promotional/social/update/forum emails processed immediately
+            # without burning an LLM call on them.
+            actionable_emails = []
+            for email_data in new_emails:
+                matched = set(email_data.get('labels', [])) & SKIP_LABELS
+                if matched:
+                    logger.info(
+                        f"Pre-filter skip [{', '.join(matched)}]: "
+                        f"{email_data['subject'][:60]}"
+                    )
+                    self.db.mark_email_processed(email_data, has_task=False)
+                else:
+                    actionable_emails.append(email_data)
+
+            if not actionable_emails:
+                logger.info("All new emails eliminated by label pre-filter")
+                self.last_check = datetime.now(timezone.utc)
+                self.db.set_config('last_email_check', self.last_check.isoformat())
+                return
+
+            # ── Parallel processing ───────────────────────────────────────────
+            # LLM calls run concurrently; the printer lock in
+            # _print_mission_with_retry serialises Bluetooth access.
             processed_count = 0
             task_count = 0
 
-            for email_data in new_emails:
+            def _process_one(email_data):
                 try:
-                    if self.process_email(email_data):
-                        processed_count += 1
-
-                        # Check if this email resulted in a task
+                    ok = self.process_email(email_data)
+                    if ok:
                         with self.db.get_connection() as conn:
-                            cursor = conn.execute(
+                            row = conn.execute(
                                 "SELECT has_task FROM processed_emails WHERE email_id = ?",
                                 (email_data['id'],)
-                            )
-                            row = cursor.fetchone()
-                            if row and row[0]:
-                                task_count += 1
-
-                    # Small delay between emails to avoid rate limits
-                    time.sleep(1)
-
+                            ).fetchone()
+                        return True, bool(row and row[0])
+                    return False, False
                 except Exception as e:
                     logger.error(f"Error processing email {email_data['id']}: {e}")
-                    continue
+                    return False, False
+
+            with ThreadPoolExecutor(max_workers=4) as executor:
+                futures = {executor.submit(_process_one, e): e for e in actionable_emails}
+                for future in as_completed(futures):
+                    ok, has_task = future.result()
+                    if ok:
+                        processed_count += 1
+                    if has_task:
+                        task_count += 1
 
             # Update last check time
             self.last_check = datetime.now(timezone.utc)
             self.db.set_config('last_email_check', self.last_check.isoformat())
 
-            logger.info(f"Check cycle complete: {processed_count} emails processed, {task_count} tasks created")
+            logger.info(
+                f"Check cycle complete: {processed_count} emails processed, "
+                f"{task_count} tasks created"
+            )
 
         except Exception as e:
             logger.error(f"Check cycle failed: {e}")
