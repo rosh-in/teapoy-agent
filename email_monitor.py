@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 
 
 class EmailMonitor:
-    def __init__(self, check_interval_minutes: int = 5):
+    def __init__(self, check_interval_minutes: float = 5):
         """Initialize email monitor"""
         self.check_interval = check_interval_minutes * 60  # Convert to seconds
         self.db = Database()
@@ -466,7 +466,7 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description='PI2PRINTER Email Monitor')
-    parser.add_argument('--interval', '-i', type=int, default=5,
+    parser.add_argument('--interval', '-i', type=float, default=5,
                         help='Check interval in minutes (default: 5)')
     parser.add_argument('--check-once', action='store_true',
                         help='Run one check cycle and exit')
