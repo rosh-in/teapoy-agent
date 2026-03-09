@@ -10,29 +10,31 @@ My email inbox is a graveyard for deadlines and reminders. It has always felt ov
 
 ```
 ================================
-         DARK INVOICE
+        ROGUE NATION
 ================================
-                      MI-3f9a1c2b
+                      MI-9c1f5a7d
 
-AGENT: Agent Roshin          HIGH
-                 14:23 SAT 07 MAR
+AGENT: Agent Roshin                HIGH
+                 07:45 MON 09 MAR
 
 PERSONS OF INTEREST:
-- John Smith
+- Netflix
 
 YOUR MISSION, SHOULD YOU
 CHOOSE TO ACCEPT IT:
-  Secure the payment before the
-  deadline expires.
+  Ethan held his breath for
+  6 minutes underwater. Roshin
+  cannot renew a subscription
+  before losing access mid-way
+  through a season finale.
 
 INTEL:
-Account suspended if not paid
-by Friday.
+Expires at midnight.
 
-         IN 2 DAYS — MON 09 MAR
+      IN 0 DAYS — MON 09 MAR
 ================================
-     *** THIS MESSAGE WILL
-         SELF-DESTRUCT ***
+  *** THIS MESSAGE WILL
+  SELF-DESTRUCT ***
 ================================
 ```
 
