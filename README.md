@@ -1,10 +1,8 @@
 # Teapoy Agent
 
-> *A sleeper agent on your tea table.*
+> *Your mission, should you choose to accept it.*
 
-Teapoy Agent monitors your Gmail, uses AI to classify every incoming email, and prints actionable ones as Mission Impossible-style briefings on a Bluetooth thermal printer — all running silently on a Raspberry Pi.
-
-No more checking your inbox. The agent checks for you, decides what matters, and hands you a physical briefing.
+My email inbox is a graveyard for deadlines and reminders. It has always felt overwhelming to keep up with. So I've reduced doing that by making an AI agent that reframes emails into Mission Impossible styled briefing printouts & plays the Mission Impossible theme score every time it prints the task. It doesn't make the tasks easier but it adds some fun and smiles into my daily life now.
 
 ---
 
