@@ -55,30 +55,18 @@ Expires at midnight.
 
 ## Model Evaluation
 
-Inference runs on a laptop over the network — the Pi just makes HTTP calls to an Ollama server. Tried a few models before switching to Gemini.
+I tried 3 small language models locally before deciding to use Gemini 2.5 Flash Lite as the model. 
+<br><br>Since my Pi Zero 2W only has 512MB RAM, I ran these models on my laptop and the Pi made HTTP calls to an Ollama server on my laptop for inference.
 
-### gemma3:4b
-> good output quality, actually understood email context and urgency well
-> needs 4GB RAM minimum — ollama keeps it loaded in memory the whole time
-> warm_up_ollama.sh kept it alive in 30 min windows to skip cold starts, but the RAM cost never goes away
-> not practical to have your laptop donating 4GB 24/7 to an email monitor
+### Gemma 3:4B
+Good output quality for my specific needs, but requires 4GB RAM minimum. That made it impractical for a 24/7 running email agent like mine.
 
-### gemma2:2b
-> only ~2GB RAM, fine to run on a laptop 24/7
-> cannot run on the Pi Zero 2W directly — it only has 512MB RAM, so inference still stays on the laptop
-> the intelligence just isn't there — missed implied deadlines, misread tone, turned noise into missions
-> works for simple stuff, falls apart when emails need actual judgment
+### Gemma 2:2B
+Ran fine on 2GB RAM, which made it a better option given my limited resources. But it often fell apart when emails needed any judgment or the tone was even slightly complex.
 
-### LFM 2.5:1.2B (Liquid AI)
-> designed for edge/on-device deployment, runs under 1GB RAM
-> would fit a Pi 4 or Pi 5 but not the Pi Zero 2W (512MB)
-> built for tool-calling and agentic tasks — not knowledge-intensive classification
-> results were poor, couldn't reliably turn even simple emails into tasks
-> interesting experiment, wrong tool for this
+### LFM 2.5:1.2B
+Lightweight enough to run locally on a Pi 4 or Pi 5 (it needs around 1GB RAM, so it can't run on my Pi Zero). But it's made to be a tool-calling model and isn't that suited for text generation. So it's far less suitable for my needs, although it can be run locally on a better Pi.
 
-### Gemini 2.5 Flash Lite
-> handles email classification reliably — gets context, urgency, and intent right
-> $0.10 per million input tokens, $0.40 output — costs almost nothing at this scale
-> free tier covers up to 1,000 requests/day, which is more than enough here
-> no laptop dependency — Pi calls the API directly and works standalone
-> this is the default
+---
+
+It's promising to see single-purpose models moving toward being small enough to run on a Raspberry Pi locally. I'll hopefully find one worth switching to.
