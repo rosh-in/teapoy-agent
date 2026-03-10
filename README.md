@@ -40,6 +40,13 @@ Expires at midnight.
 
 ---
 
+## Architecture Diagram
+
+![agent teapoy - architecture diagram](https://github.com/user-attachments/assets/04412343-1561-4f8d-a636-a0e110e75bcf)
+
+---
+
+
 ## Hardware
 
 - Raspberry Pi Zero 2W
@@ -49,14 +56,12 @@ Expires at midnight.
 
 ---
 
-*Your mission, should you choose to accept it.*
-
----
 
 ## Model Evaluation
 
 I tried 3 small language models locally before deciding to use Gemini 2.5 Flash Lite as the model. 
 <br><br>Since my Pi Zero 2W only has 512MB RAM, I ran these models on my laptop and the Pi made HTTP calls to an Ollama server on my laptop for inference.
+
 
 ### Gemma 3:4B
 Good output quality for my specific needs, but requires 4GB RAM minimum. That made it impractical for a 24/7 running email agent like mine.
